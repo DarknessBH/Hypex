@@ -1,0 +1,1041 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "=https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q={{ $json.chatInput }}&type=video&order=date&key=AIzaSyDOrNU5ZPZ-c0lFNnwQN_vuTQlLhWgvRRY",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -768,
+        1024
+      ],
+      "id": "999c13a2-c732-401f-90ce-43e6ea3eb7cb",
+      "name": "Buscar Videos de Canais"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -944,
+        1024
+      ],
+      "id": "3391c4b9-00a3-4864-a2af-f1741a93bc2a",
+      "name": "Inserir o Canal (Temporario)",
+      "webhookId": "7d9fe609-f929-4ab5-885e-8e1aab36eff6"
+    },
+    {
+      "parameters": {
+        "url": "=https://www.googleapis.com/youtube/v3/videos?id={{ $json.items.map(item => item.id.videoId).slice(0,10).join(',') }}&key=AIzaSyDOrNU5ZPZ-c0lFNnwQN_vuTQlLhWgvRRY\n     &part=snippet,contentDetails,statistics,status",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -592,
+        1120
+      ],
+      "id": "53f294b7-484e-4c04-b4c9-21e26e070a07",
+      "name": "Buscar Estatísticas dos Videos"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "youtube_videos",
+          "mode": "list",
+          "cachedResultName": "youtube_videos"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "titulo": "={{ $json.titulo }}",
+            "link": "={{ $json.link }}",
+            "categoria_id": "={{ $json.categoriaId }}",
+            "visualizacoes": "={{ $json.visualizacoes }}",
+            "likes": "={{ $json.likes }}",
+            "id_video": "={{ $json.id_video }}",
+            "publicado_em": "={{ $json.publicado }}",
+            "id_canal": "={{ $('Buscar Videos de Canais').item.json.items[1].snippet.channelId }}"
+          },
+          "matchingColumns": [
+            "id_video"
+          ],
+          "schema": [
+            {
+              "id": "id_video",
+              "displayName": "id_video",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "id_canal",
+              "displayName": "id_canal",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "titulo",
+              "displayName": "titulo",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "publicado_em",
+              "displayName": "publicado_em",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "link",
+              "displayName": "link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "categoria_id",
+              "displayName": "categoria_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "visualizacoes",
+              "displayName": "visualizacoes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "likes",
+              "displayName": "likes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "connectionTimeout": 30,
+          "delayClosingIdleConnection": 0,
+          "outputColumns": [
+            "*"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -48,
+        976
+      ],
+      "id": "8e90bedb-ca1b-4680-992a-6f93b362d47e",
+      "name": "Inserir ou Atualizar Vídeos e Estatísticas",
+      "retryOnFail": true,
+      "credentials": {
+        "postgres": {
+          "id": "0YhOwSqEoDgDZDN6",
+          "name": "Postgres concetado com supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://www.googleapis.com/youtube/v3/channels\n?part=snippet,contentDetails\n&id=https://www.googleapis.com/youtube/v3/channels\n?part=snippet,contentDetails\n&id={{ $json.items.map(item => item.snippet.channelId).slice(0,10).join(',') }}\n&key=AIzaSyDOrNU5ZPZ-c0lFNnwQN_vuTQlLhWgvRRY",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -448,
+        464
+      ],
+      "id": "af315cee-7ac5-4e86-8287-d3e23c21adc9",
+      "name": "Buscar Canal"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "youtube_canais",
+          "mode": "list",
+          "cachedResultName": "youtube_canais"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "visualizacoes": "={{ $json.viewCount }}",
+            "inscritos": "={{ $json.subscriberCount }}",
+            "quantidade_videos": "={{ $json.videoCount }}",
+            "inscritos_ocultos": false,
+            "tipo": "={{ $json.tipo }}",
+            "nome_canal": "={{ $json.nomeCanal }}",
+            "url_personalizada": "={{ $json.customUrl }}",
+            "publicado_em": "={{ $json.publishedAt }}",
+            "link_canal": "={{ $json.link }}",
+            "id_canal": "={{ $json.id }}"
+          },
+          "matchingColumns": [
+            "id_canal"
+          ],
+          "schema": [
+            {
+              "id": "id_canal",
+              "displayName": "id_canal",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nome_canal",
+              "displayName": "nome_canal",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "url_personalizada",
+              "displayName": "url_personalizada",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "publicado_em",
+              "displayName": "publicado_em",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "link_canal",
+              "displayName": "link_canal",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "visualizacoes",
+              "displayName": "visualizacoes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "inscritos",
+              "displayName": "inscritos",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "inscritos_ocultos",
+              "displayName": "inscritos_ocultos",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "quantidade_videos",
+              "displayName": "quantidade_videos",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": false,
+              "removed": false
+            },
+            {
+              "id": "tipo",
+              "displayName": "tipo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        288,
+        752
+      ],
+      "id": "bb5c62e1-2dc3-4ab1-bfd4-16519bb6fc1d",
+      "name": "Inserir ou Atualizar Canais e Estatísticas ",
+      "retryOnFail": true,
+      "credentials": {
+        "postgres": {
+          "id": "0YhOwSqEoDgDZDN6",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id={{ $json.items.map(item => item.id).slice(0,10).join(',') }}&key=AIzaSyDOrNU5ZPZ-c0lFNnwQN_vuTQlLhWgvRRY",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -208,
+        464
+      ],
+      "id": "409fa7d3-afbe-47e6-9f32-25570356a9c4",
+      "name": "Buscar Estatísticas dos Canais"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().flatMap(inputItem => {\n  const arr = inputItem.json.items || [];\n  return arr.map(channel => ({\n      json: {\n        tipo: 'canal',\n        id: channel.id,\n        nomeCanal: channel.snippet.title,\n        customUrl: channel.snippet.customUrl,\n        link: channel.snippet.customUrl\n          ? `https://www.youtube.com/${channel.snippet.customUrl}`\n          : `https://www.youtube.com/channel/${channel.id}`,\n        publishedAt: channel.snippet.publishedAt,\n        ...channel.statistics   // <-- estatísticas no mesmo nível\n }\n  }));\n});      \n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        16,
+        752
+      ],
+      "id": "71531eec-9c8d-42b0-9572-b43b7385e9b2",
+      "name": "Filtrar Estatísticas do Canal"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items[0].json.items.map(channel => {\n  return {\n    json: {\n      id: channel.id,\n      thumbnail_canal: channel.snippet.thumbnails.high.url\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        544
+      ],
+      "id": "06e49d2a-7dfc-4df7-815b-9470bf9c2527",
+      "name": "Filtrar Dados não Estruturados dos Canais"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items[0].json.items.map(item => {\n  return {\n    json: {\n      id_video: item.id,\n      thumbnail_video: item.snippet.thumbnails.high.url\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        1216
+      ],
+      "id": "2f1991e9-fad6-4db8-a303-1ec62b7d28e6",
+      "name": "Filtrar Dados não Estruturados dos Videos"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "imagem_canal",
+              "value": "={{ $json.thumbnail_canal }}"
+            },
+            {
+              "name": "Id_canal",
+              "value": "={{ $json.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Filtrar Dados Imagem Canal",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        448,
+        544
+      ],
+      "typeVersion": 1,
+      "id": "1b737781-3a68-4b4c-8fd6-e0fcb3ef6657"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "Imagem_video",
+              "value": "={{ $json.thumbnail_video }}"
+            },
+            {
+              "name": "Id_video",
+              "value": "={{ $json.id_video.videoId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "FIltrar Dados Thumbnail",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        432,
+        1024
+      ],
+      "typeVersion": 1,
+      "id": "107fed2a-7560-4961-b027-58f4418ad488"
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "youtube_canais",
+        "fields": "=thumbnail_video,thumbnail_canal,Id_video,Id_canal",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        720,
+        784
+      ],
+      "id": "d115d2f1-732e-4483-9860-cce802b72512",
+      "name": "Inserir Dados não Estruturados",
+      "notesInFlow": false,
+      "credentials": {
+        "mongoDb": {
+          "id": "3vC60hwetHkKAMa5",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId={{ $json.items[0].id.videoId }}&maxResults=100&textFormat=plainText&key=AIzaSyDOrNU5ZPZ-c0lFNnwQN_vuTQlLhWgvRRY\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -864,
+        1776
+      ],
+      "id": "47985b31-afeb-4fae-ab00-3ef5df4e647a",
+      "name": "Buscar Comentários dos vídeos"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items\n  .map(item => item.json.items) // pega os items de cada vídeo\n  .flat() // junta todos os arrays de items em 1 só\n  .map(c => {\n    return {\n      json: {\n        comentario: c.snippet.topLevelComment.snippet.textDisplay\n      }\n    };\n  });\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1168,
+        1776
+      ],
+      "id": "b2421e54-15fe-4188-a82a-fd12543f7509",
+      "name": "Filtrar Estatísticas e Vídeos1"
+    },
+    {
+      "parameters": {
+        "url": "=https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId={{ $('Buscar Videos de Canais').item.json.items[1].id.videoId }}&maxResults=100&textFormat=plainText&key=AIzaSyDOrNU5ZPZ-c0lFNnwQN_vuTQlLhWgvRRY\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -672,
+        1776
+      ],
+      "id": "73ab20e0-83a3-42e3-9182-2b1535875fae",
+      "name": "Buscar Comentários dos vídeos1"
+    },
+    {
+      "parameters": {
+        "url": "=https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId={{ $('Buscar Videos de Canais').item.json.items[2].id.videoId }}&maxResults=100&textFormat=plainText&key=AIzaSyDOrNU5ZPZ-c0lFNnwQN_vuTQlLhWgvRRY\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -464,
+        1776
+      ],
+      "id": "970e2872-120b-440c-8e55-a227b657cbf3",
+      "name": "Buscar Comentários dos vídeos2"
+    },
+    {
+      "parameters": {
+        "url": "=https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId={{ $('Buscar Videos de Canais').item.json.items[3].id.videoId }}&maxResults=100&textFormat=plainText&key=AIzaSyDOrNU5ZPZ-c0lFNnwQN_vuTQlLhWgvRRY\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -256,
+        1776
+      ],
+      "id": "20e49a4b-4f6b-44f7-bbe1-1b2639620702",
+      "name": "Buscar Comentários dos vídeos3"
+    },
+    {
+      "parameters": {
+        "url": "=https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId={{ $('Buscar Videos de Canais').item.json.items[4].id.videoId }}&maxResults=100&textFormat=plainText&key=AIzaSyDOrNU5ZPZ-c0lFNnwQN_vuTQlLhWgvRRY\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -64,
+        1776
+      ],
+      "id": "eac05313-56f9-45d6-a704-01a956472010",
+      "name": "Buscar Comentários dos vídeos4"
+    },
+    {
+      "parameters": {
+        "url": "=https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId={{ $('Buscar Videos de Canais').item.json.items[5].id.videoId }}&maxResults=100&textFormat=plainText&key=AIzaSyDOrNU5ZPZ-c0lFNnwQN_vuTQlLhWgvRRY\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        128,
+        1776
+      ],
+      "id": "470d9e3c-8452-48c3-83cf-096934b49a34",
+      "name": "Buscar Comentários dos vídeos5"
+    },
+    {
+      "parameters": {
+        "url": "=https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId={{ $('Buscar Videos de Canais').item.json.items[6].id.videoId }}&maxResults=100&textFormat=plainText&key=AIzaSyDOrNU5ZPZ-c0lFNnwQN_vuTQlLhWgvRRY\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        320,
+        1776
+      ],
+      "id": "4d438752-e88f-48a7-a4b1-929dffc30455",
+      "name": "Buscar Comentários dos vídeos6"
+    },
+    {
+      "parameters": {
+        "url": "=https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId={{ $('Buscar Videos de Canais').item.json.items[7].id.videoId }}&maxResults=100&textFormat=plainText&key=AIzaSyDOrNU5ZPZ-c0lFNnwQN_vuTQlLhWgvRRY\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        528,
+        1776
+      ],
+      "id": "356b87cd-bbee-4dcd-b2a6-9f8f9769e6c7",
+      "name": "Buscar Comentários dos vídeos7"
+    },
+    {
+      "parameters": {
+        "url": "=https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId={{ $('Buscar Videos de Canais').item.json.items[8].id.videoId }}&maxResults=100&textFormat=plainText&key=AIzaSyDOrNU5ZPZ-c0lFNnwQN_vuTQlLhWgvRRY\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        736,
+        1776
+      ],
+      "id": "31499fb3-6b73-459b-8353-30a59cdba433",
+      "name": "Buscar Comentários dos vídeos8"
+    },
+    {
+      "parameters": {
+        "url": "=https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId={{ $('Buscar Videos de Canais').item.json.items[9].id.videoId }}&maxResults=100&textFormat=plainText&key=AIzaSyDOrNU5ZPZ-c0lFNnwQN_vuTQlLhWgvRRY\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        1776
+      ],
+      "id": "79f1eb69-4fe8-4a7d-9229-86daad162f01",
+      "name": "Buscar Comentários dos vídeos9"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an expert YouTube comment analyst. Analyze the following Portuguese comments and provide the output in Portuguese. For each comment, provide:\n\n1. The overall sentiment (positivo, negativo, neutro).\n2. The intensity of the sentiment (leve, moderado, forte).\n3. The underlying emotion(s) (e.g., frustração, curiosidade, elogio, humor, surpresa).\n4. The main topics discussed.\n5. Actionable insights for the content creator based on the comment.\n\nOutput format (JSON, **only the array**, no markdown, no explanations):\n[\n  {\n    \"comentario\": \"Texto do comentário\",\n    \"sentimento\": \"positivo/negativo/neutro\",\n    \"intensidade\": \"leve/moderado/forte\",\n    \"emocao\": [\"frustração\", \"curiosidade\", \"elogio\", \"humor\", \"surpresa\"],\n    \"topicos\": [\"topico1\", \"topico2\"],\n    \"insight\": \"Resumo de insights ou ação recomendada para o criador\"\n  }\n]\n\nComments to analyze:\n{{ $json[\"comentario\"] }}\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1376,
+        1776
+      ],
+      "id": "37c2a72e-a649-4789-acc3-65020143b667",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {
+          "maxTokensToSample": 2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1376,
+        1968
+      ],
+      "id": "9096ca20-5839-4fdf-854e-92763922e3fc",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "cIphLz9echrpAxeU",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.3,
+      "position": [
+        1536,
+        1984
+      ],
+      "id": "285bd906-22f8-4297-8d5e-5c4009d9a4ef",
+      "name": "Code Tool"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.3,
+      "position": [
+        1664,
+        1984
+      ],
+      "id": "c5b3d988-e2d1-4f20-9647-3b7a1ffe6898",
+      "name": "Code Tool1"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items[0].json.items.map(video => {\n  // Corrige a detecção do ID\n  const videoId = typeof video.id === 'object' ? video.id.videoId : video.id;\n\n  return {\n    json: {\n      titulo: video.snippet.title,\n      canal: video.snippet.channelTitle,\n      publicado: video.snippet.publishedAt,\n      id_video: videoId,\n      link: `https://youtube.com/watch?v=${videoId}`,\n      categoriaId: video.snippet.categoryId || null,\n      visualizacoes: video.statistics?.viewCount || 0,\n      likes: video.statistics?.likeCount || 0,\n      comentarios: video.statistics?.commentCount || 0\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        976
+      ],
+      "id": "e5a9b824-0238-4d74-820a-7106b6f14740",
+      "name": "Filtrar Estatísticas de Videos"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items[0].json.items.map(video => {\n  // Corrige a detecção do ID\n  const videoId = typeof video.id === 'object' ? video.id.videoId : video.id;\n\n  return {\n    json: {\n      titulo: video.snippet.title,\n      canal: video.snippet.channelTitle,\n      publicado: video.snippet.publishedAt,\n      id_video: videoId,\n      link: `https://youtube.com/watch?v=${videoId}`,\n      categoriaId: video.snippet.categoryId || null,\n      visualizacoes: video.statistics?.viewCount || 0,\n      likes: video.statistics?.likeCount || 0,\n      comentarios: video.statistics?.commentCount || 0\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        816
+      ],
+      "id": "bc328c22-b80b-4b8e-951a-b4c73312ca92",
+      "name": "Filtrar Estatísticas de Shorts"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Buscar Videos de Canais": {
+      "main": [
+        [
+          {
+            "node": "Buscar Estatísticas dos Videos",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Buscar Canal",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filtrar Dados não Estruturados dos Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inserir o Canal (Temporario)": {
+      "main": [
+        [
+          {
+            "node": "Buscar Videos de Canais",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Estatísticas dos Videos": {
+      "main": [
+        [
+          {
+            "node": "Filtrar Estatísticas de Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Canal": {
+      "main": [
+        [
+          {
+            "node": "Buscar Estatísticas dos Canais",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Estatísticas dos Canais": {
+      "main": [
+        [
+          {
+            "node": "Filtrar Dados não Estruturados dos Canais",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filtrar Estatísticas do Canal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar Estatísticas do Canal": {
+      "main": [
+        [
+          {
+            "node": "Inserir ou Atualizar Canais e Estatísticas ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar Dados não Estruturados dos Canais": {
+      "main": [
+        [
+          {
+            "node": "Filtrar Dados Imagem Canal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inserir ou Atualizar Vídeos e Estatísticas": {
+      "main": [
+        []
+      ]
+    },
+    "Inserir ou Atualizar Canais e Estatísticas ": {
+      "main": [
+        []
+      ]
+    },
+    "Filtrar Dados não Estruturados dos Videos": {
+      "main": [
+        [
+          {
+            "node": "FIltrar Dados Thumbnail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar Dados Imagem Canal": {
+      "main": [
+        [
+          {
+            "node": "Inserir Dados não Estruturados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FIltrar Dados Thumbnail": {
+      "main": [
+        [
+          {
+            "node": "Inserir Dados não Estruturados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inserir Dados não Estruturados": {
+      "main": [
+        []
+      ]
+    },
+    "Buscar Comentários dos vídeos": {
+      "main": [
+        [
+          {
+            "node": "Buscar Comentários dos vídeos1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Comentários dos vídeos3": {
+      "main": [
+        [
+          {
+            "node": "Buscar Comentários dos vídeos4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Comentários dos vídeos6": {
+      "main": [
+        [
+          {
+            "node": "Buscar Comentários dos vídeos7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Comentários dos vídeos1": {
+      "main": [
+        [
+          {
+            "node": "Buscar Comentários dos vídeos2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Comentários dos vídeos2": {
+      "main": [
+        [
+          {
+            "node": "Buscar Comentários dos vídeos3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Comentários dos vídeos4": {
+      "main": [
+        [
+          {
+            "node": "Buscar Comentários dos vídeos5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Comentários dos vídeos5": {
+      "main": [
+        [
+          {
+            "node": "Buscar Comentários dos vídeos6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Comentários dos vídeos7": {
+      "main": [
+        [
+          {
+            "node": "Buscar Comentários dos vídeos8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Comentários dos vídeos8": {
+      "main": [
+        [
+          {
+            "node": "Buscar Comentários dos vídeos9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Comentários dos vídeos9": {
+      "main": [
+        [
+          {
+            "node": "Filtrar Estatísticas e Vídeos1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar Estatísticas e Vídeos1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        []
+      ]
+    },
+    "Code Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code Tool1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar Estatísticas de Videos": {
+      "main": [
+        [
+          {
+            "node": "Inserir ou Atualizar Vídeos e Estatísticas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar Estatísticas de Shorts": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "ec43689e-19d3-451d-95ac-d583144f084f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ce652481cd2be68d7f5d83b74b99e968076304a53c5639bb0bf6403c9253e7e5"
+  },
+  "id": "ZfHUP8sRBkyPDkVu",
+  "tags": []
+}
